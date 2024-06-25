@@ -47,6 +47,11 @@ docker push ${docker_username}/simple-app
 13.可以到cloudwatch觀察log
 ![img_11.png](picture/img_11.png)
 
+14.測試完畢刪除資源，到cloudformation點擊剛創建的stack
+點擊delete即可把stack內所有資源刪除
+![img.png](picture/img12.png)
+
+
 ## ECS 可能會用到指令
 停止指定task
 ``` sh
