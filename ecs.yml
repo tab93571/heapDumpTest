@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+    imageRepository:
+        Type: String
+        Default: 'docker.io/kevin5603/simple-app'
+    subnetsArn:
+        Type: String
+        Default: 'subnet-081292846f185bf89'
+Resources:
+  TaskExecutionRoleArn:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ecs-demo-task-executionrole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+      Policies:
+        - PolicyName: CloudWatchLogsFullAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:*"
+                Resource: "*"
+  EcsDemoTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn: TaskExecutionRoleArn
+    Properties:
+      ExecutionRoleArn: !GetAtt TaskExecutionRoleArn.Arn
+      Cpu: 1024
+      Memory: 2048
+      Family: my-ecs-task
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: ecs-demo-container
+          image: !Ref imageRepository
+          Cpu: 1024
+          Memory: 256
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: "/ecs/ecs-demo-container-logs"
+              awslogs-region: us-west-2
+              awslogs-create-group: "true"
+              awslogs-stream-prefix: ecs
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: ecs-demo-cluster
+  EcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: ecs-security-group
+      GroupDescription: 'ecs security group'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+  EcsDemoService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - EcsDemoTaskDefinition
+      - EcsCluster
+      - EcsSecurityGroup
+    Properties:
+      ServiceName: ecs-demo-service
+      DesiredCount: 1
+      LaunchType: FARGATE
+      TaskDefinition: !Ref EcsDemoTaskDefinition
+      Cluster: !Ref EcsCluster
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !GetAtt EcsSecurityGroup.GroupId
+          Subnets:
+            - !Ref subnetsArn
