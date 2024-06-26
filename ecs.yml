@@ -1,11 +1,17 @@
 AWSTemplateFormatVersion: 2010-09-09
+# Custom values - see parameters.json
 Parameters:
     imageRepository:
         Type: String
+        # specify your docker registry or replace when creating stack
         Default: 'docker.io/kevin5603/simple-app'
     subnetsArn:
         Type: String
+        # specify your subnet or replace when creating stack
         Default: 'subnet-081292846f185bf89'
+    awslogsRegion:
+      Type: String
+      Default: 'us-west-2'
 Resources:
   TaskExecutionRoleArn:
     Type: AWS::IAM::Role
@@ -50,7 +56,7 @@ Resources:
             LogDriver: awslogs
             Options:
               awslogs-group: "/ecs/ecs-demo-container-logs"
-              awslogs-region: us-west-2
+              awslogs-region: !Ref awslogsRegion
               awslogs-create-group: "true"
               awslogs-stream-prefix: ecs
           PortMappings:
