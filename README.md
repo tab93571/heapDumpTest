@@ -12,6 +12,8 @@ docker build -t ${docker_username}/simple-app --platform linux/amd64 .
 docker tag ${docker_username}/simple-app ${docker_username}/simple-app 
 docker push ${docker_username}/simple-app
 ```
+檢查 ecs.yml region 是否為自己使用的
+`awslogs-region: us-west-2`
 
 3.到aws cloudformation 點選create stack上傳ecs.yml
 ![img_2.png](picture/img_2.png)
@@ -57,5 +59,9 @@ docker push ${docker_username}/simple-app
 ``` sh
 aws ecs stop-task --cluster ${cluster_name} --task ${task_ARN}
 ```
+檢查 custom_params 是否為自己使用的
+- awslogs-region
+- subnetsArn
+- imageRepository (optional)
 
 
