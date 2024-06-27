@@ -306,8 +306,8 @@ Resources:
           Value: ecs-demo-service
       Statistic: Average
       Period: 60
-      DatapointsToAlarm: 3
-      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 2
       Threshold: 30
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
@@ -325,7 +325,7 @@ Resources:
           Value: ecs-demo-service
       Statistic: Average
       Period: 60
-      DatapointsToAlarm: 8
+      DatapointsToAlarm: 1
       EvaluationPeriods: 2
       Threshold: 20
       ComparisonOperator: LessThanOrEqualToThreshold
