@@ -187,7 +187,7 @@ Resources:
         - FARGATE
       ContainerDefinitions:
         - Name: ecs-demo-container
-          image: !Ref imageRepository
+          Image: !Ref imageRepository
           Cpu: 256
           Memory: 256
           Essential: true
