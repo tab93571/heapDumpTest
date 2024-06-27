@@ -293,5 +293,43 @@ Resources:
             ScalingAdjustment: -1
         MetricAggregationType: Average
         Cooldown: 60
+  HighCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ecs-demo-cluster-high-cpu
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Dimensions:
+        - Name: ClusterName
+          Value: ecs-demo-cluster
+        - Name: ServiceName
+          Value: ecs-demo-service
+      Statistic: Average
+      Period: 60
+      DatapointsToAlarm: 3
+      EvaluationPeriods: 1
+      Threshold: 30
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref ScaleUpPolicy
+  LowCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ecs-demo-cluster-low-cpu
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Dimensions:
+        - Name: ClusterName
+          Value: ecs-demo-cluster
+        - Name: ServiceName
+          Value: ecs-demo-service
+      Statistic: Average
+      Period: 60
+      DatapointsToAlarm: 8
+      EvaluationPeriods: 10
+      Threshold: 20
+      ComparisonOperator: LessThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref ScaleDownPolicy
 
 

@@ -1,3 +1,5 @@
+## 注意事項
+### 有些aws服務不是用免費方案所以測試完記得要把stack刪掉
 ## 打包流程
 1.打包jar檔
 ``` sh
@@ -47,6 +49,12 @@ docker push ${docker_username}/simple-app
 13.測試完畢刪除資源，到cloudformation點擊剛創建的stack
 點擊delete即可把stack內所有資源刪除
 ![img.png](picture/img12.png)
+
+14.可以用/cpu這隻API來測試auto scale
+![img.png](picture/img_21.png)
+![img_1.png](picture/img_18.png)
+![img.png](picture/img_19.png)
+![img.png](picture/img_20.png)
 
 
 ## ECS 可能會用到指令

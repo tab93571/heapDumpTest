@@ -13,7 +13,7 @@ public class DemoGcMetricApplication implements CommandLineRunner {
 
   @Override
   public void run(String... args) {
-    System.out.println("ecs v1.1...");
+    System.out.println("ecs v1.2...");
   }
 }
 

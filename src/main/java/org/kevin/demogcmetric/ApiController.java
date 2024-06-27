@@ -36,7 +36,7 @@ public class ApiController {
 
   @GetMapping("cpu")
   public void cpu() {
-    System.out.println("start...");
+    System.out.println("start cpu test...");
     int num = 0;
     long start = System.currentTimeMillis() / 1000;
     while (true) {
@@ -45,7 +45,7 @@ public class ApiController {
         System.out.println("reset");
         num = 0;
       }
-      if ((System.currentTimeMillis() / 1000) - start > 60) {
+      if ((System.currentTimeMillis() / 1000) - start > 180) {
         System.out.println("end...");
         return;
       }
