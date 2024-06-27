@@ -1,17 +1,14 @@
 AWSTemplateFormatVersion: 2010-09-09
 # Custom values - see parameters.json
 Parameters:
-    imageRepository:
-        Type: String
-        # specify your docker registry or replace when creating stack
-        Default: 'docker.io/kevin5603/simple-app'
-    subnetsArn:
-        Type: String
-        # specify your subnet or replace when creating stack
-        Default: 'subnet-081292846f185bf89'
-    awslogsRegion:
-      Type: String
-      Default: 'us-west-2'
+  imageRepository:
+    Type: String
+    # specify your docker registry or replace when creating stack
+    Default: 'docker.io/kevin5603/simple-app'
+  ecsDemoVpcId:
+    Type: AWS::EC2::VPC::Id
+  subnetIdList:
+    Type: List<AWS::EC2::Subnet::Id>
 Resources:
   TaskExecutionRoleArn:
     Type: AWS::IAM::Role
@@ -35,13 +32,56 @@ Resources:
                 Action:
                   - "logs:*"
                 Resource: "*"
+  EcsDemoLoadbalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: EcsSecurityGroup
+    Properties:
+      Name: ecs-demo-alb
+      Scheme: internet-facing
+      SecurityGroups:
+        - !GetAtt EcsSecurityGroup.GroupId
+      Subnets: !Ref subnetIdList
+      Type: application
+  EcsDemoListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !GetAtt EcsDemoLoadbalancer.LoadBalancerArn
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref EcsDemoServiceTargetGroup
+  EcsDemoServiceTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: EcsDemoLoadbalancer
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: 8080
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Name: EcsDemoTargetGroup
+      Port: 8080
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: true
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: 300
+      TargetType: ip
+      UnhealthyThresholdCount: 10
+      VpcId: !Ref ecsDemoVpcId
   EcsDemoTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     DependsOn: TaskExecutionRoleArn
     Properties:
       ExecutionRoleArn: !GetAtt TaskExecutionRoleArn.Arn
-      Cpu: 1024
-      Memory: 2048
+      Cpu: 256
+      Memory: 1024
       Family: my-ecs-task
       NetworkMode: awsvpc
       RequiresCompatibilities:
@@ -49,14 +89,14 @@ Resources:
       ContainerDefinitions:
         - Name: ecs-demo-container
           image: !Ref imageRepository
-          Cpu: 1024
+          Cpu: 256
           Memory: 256
           Essential: true
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: "/ecs/ecs-demo-container-logs"
-              awslogs-region: !Ref awslogsRegion
+              awslogs-region: !Ref AWS::Region
               awslogs-create-group: "true"
               awslogs-stream-prefix: ecs
           PortMappings:
@@ -76,22 +116,83 @@ Resources:
           FromPort: 8080
           ToPort: 8080
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
   EcsDemoService:
     Type: AWS::ECS::Service
     DependsOn:
       - EcsDemoTaskDefinition
       - EcsCluster
       - EcsSecurityGroup
+      - EcsDemoListener
     Properties:
       ServiceName: ecs-demo-service
       DesiredCount: 1
       LaunchType: FARGATE
       TaskDefinition: !Ref EcsDemoTaskDefinition
       Cluster: !Ref EcsCluster
+      LoadBalancers:
+        - ContainerName: ecs-demo-container
+          ContainerPort: 8080
+          TargetGroupArn: !Ref EcsDemoServiceTargetGroup
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           SecurityGroups:
             - !GetAtt EcsSecurityGroup.GroupId
-          Subnets:
-            - !Ref subnetsArn
+          Subnets: !Ref subnetIdList
+  EcsDemoScaleTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: EcsDemoService
+    Properties:
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+      ResourceId: service/ecs-demo-cluster/ecs-demo-service
+      MinCapacity: 1
+      MaxCapacity: 4
+      RoleARN: arn:aws:iam::975049910219:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+  ScaleUpPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    DependsOn: EcsDemoScaleTarget
+    Properties:
+      PolicyName: ecs-cluster-scale-up
+      PolicyType: StepScaling
+      ResourceId: service/ecs-demo-cluster/ecs-demo-service
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            MetricIntervalUpperBound: 20
+            ScalingAdjustment: 1
+          - MetricIntervalLowerBound: 20
+            MetricIntervalUpperBound: 40
+            ScalingAdjustment: 2
+          - MetricIntervalLowerBound: 40
+            MetricIntervalUpperBound: 60
+            ScalingAdjustment: 3
+          - MetricIntervalLowerBound: 60
+            ScalingAdjustment: 4
+        MetricAggregationType: Average
+        Cooldown: 60
+  ScaleDownPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    DependsOn: EcsDemoScaleTarget
+    Properties:
+      PolicyName: ecs-cluster-scale-down
+      PolicyType: StepScaling
+      ResourceId: service/ecs-demo-cluster/ecs-demo-service
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        StepAdjustments:
+          - MetricIntervalUpperBound: 0
+            ScalingAdjustment: -1
+        MetricAggregationType: Average
+        Cooldown: 60
+
+

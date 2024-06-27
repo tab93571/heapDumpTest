@@ -21,7 +21,7 @@ docker push ${docker_username}/simple-app
 4.(optional)替換ecs.yml 變數imageRepository改成自己的
 ![img_3.png](picture/img_3.png)
 
-5.替換ecs.yml 變數subnetsArn改成自己的
+5.替換ecs.yml 變數subnetId改成自己的
 ![img_1.png](picture/img_1.png)
 
 6.一路點擊next，最後按submit
