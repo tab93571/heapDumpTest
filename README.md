@@ -74,9 +74,58 @@ docker push ${docker_username}/simple-app
 ``` sh
 aws ecs stop-task --cluster ${cluster_name} --task ${task_ARN}
 ```
-檢查 custom_params 是否為自己使用的
-- awslogs-region
-- subnetsArn
-- imageRepository (optional)
+# Create Lambda
+## Manually in AWS console
+前提：需要將前面的 ECS 建置完畢
+
+1.建立lambda
+
+function name: high-memory-action
+Runtime: python: 3.12
+
+其他皆為預設值，點選建立。
+
+![img_22.png](picture/img_22.png)
+
+2.修改 code source
+```
+import json
+
+def lambda_handler(event, context):
+    print("=== high memory lambda ===")
+
+    # TODO implement
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Hello from Lambda!')
+    }
+```
+
+![img_23.png](picture/img_23.png)
 
 
+2.建立alarm
+![img_24.png](picture/img_24.png)
+
+![img_25.png](picture/img_25.png)
+
+選擇剛建好的 lambda, 其他保持預設, 一路點下去直至建立 
+
+![img_26.png](picture/img_26.png)
+
+3.把alarm ARN 複製起來 等等要用
+
+![img_27.png](picture/img_27.png)
+
+4.回到 lambda 加 permission
+
+Configuration -> Permissions -> Resource-based policy statements -> add permissions
+
+![img_28.png](picture/img_28.png)
+
+5.memory 超過所設定的閾值便會觸發action
+
+![img_29.png](picture/img_29.png)
+![img_30.png](picture/img_30.png)
+
+## cloudformation under construction 
