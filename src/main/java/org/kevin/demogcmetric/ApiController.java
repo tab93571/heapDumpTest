@@ -2,6 +2,7 @@ package org.kevin.demogcmetric;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,11 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApiController {
 
   List<byte[]> list = new ArrayList<>();
+  String randomId = UUID.randomUUID().toString();
 
   @GetMapping
   public String hello() {
-    System.out.println("hello world");
-    return "hello world";
+    System.out.println("hello world: " + randomId);
+    return "hello world: " + randomId;
   }
 
   @GetMapping("memory")

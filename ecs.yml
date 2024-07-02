@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-# Custom values - see parameters.json
+Transform: AWS::Serverless-2016-10-31
 Parameters:
   imageRepository:
     Type: String
@@ -180,8 +180,8 @@ Resources:
     Properties:
       ExecutionRoleArn: !GetAtt TaskExecutionRoleArn.Arn
       Cpu: 256
-      Memory: 1024
-      Family: my-ecs-task
+      Memory: 512
+      Family: my-ecs-task-caas
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -194,13 +194,21 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: "/ecs/ecs-demo-container-logs"
+              awslogs-group: "/ecs/ecs-demo-container-caas-logs"
               awslogs-region: !Ref AWS::Region
               awslogs-create-group: "true"
               awslogs-stream-prefix: ecs
           PortMappings:
             - ContainerPort: 8080
               Protocol: tcp
+          HealthCheck:
+            Command:
+              - "CMD-SHELL"
+              - "curl -f http://localhost:8080 || exit 1"
+            Interval: 30
+            Retries: 3
+            Timeout: 5
+            StartPeriod: 10
   EcsCluster:
     Type: AWS::ECS::Cluster
     Properties:
@@ -250,7 +258,7 @@ Resources:
       ServiceNamespace: ecs
       ResourceId: service/ecs-demo-cluster/ecs-demo-service
       MinCapacity: 1
-      MaxCapacity: 4
+      MaxCapacity: 2
       RoleARN: !GetAtt AutoScalingRoleArn.Arn
   ScaleUpPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
@@ -265,16 +273,16 @@ Resources:
         AdjustmentType: ChangeInCapacity
         StepAdjustments:
           - MetricIntervalLowerBound: 0
-            MetricIntervalUpperBound: 20
-            ScalingAdjustment: 1
-          - MetricIntervalLowerBound: 20
             MetricIntervalUpperBound: 40
-            ScalingAdjustment: 2
+            ScalingAdjustment: 1
+#          - MetricIntervalLowerBound: 20
+#            MetricIntervalUpperBound: 40
+#            ScalingAdjustment: 2
+#          - MetricIntervalLowerBound: 40
+#            MetricIntervalUpperBound: 60
+#            ScalingAdjustment: 3
           - MetricIntervalLowerBound: 40
-            MetricIntervalUpperBound: 60
-            ScalingAdjustment: 3
-          - MetricIntervalLowerBound: 60
-            ScalingAdjustment: 4
+            ScalingAdjustment: 2
         MetricAggregationType: Average
         Cooldown: 60
   ScaleDownPolicy:
