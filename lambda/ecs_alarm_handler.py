@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger(__name__)
 cloudwatch = boto3.resource("cloudwatch")
 client = boto3.client('cloudwatch')
+lambda_client = boto3.client('lambda')
 
 class CLoudWatchWrapper:
   def __init__(self, cloudwatch_resource):
@@ -74,12 +75,13 @@ def lambda_handler(event, context):
   print(f"service name: {service_name}")
   alarm_name = cluster_name + "-" + service_name + "-" + task_id + "-" + "alarm"
   print(f"alarm name: {alarm_name}")
+  function_name = 'alarm_processor'
 
   cw_wrapper = CLoudWatchWrapper(cloudwatch)
 
   if status == 'PROVISIONING':
     print('crate task alarm...')
-    alarm_actions = ['arn:aws:lambda:us-west-2:975049910219:function:tmp']
+    alarm_actions = ['arn:aws:lambda:us-west-2:975049910219:function:' + function_name]
     alarm_description = 'use python create alarm'
     eval_periods = 1
     threshold = 1
@@ -176,7 +178,33 @@ def lambda_handler(event, context):
                                            metrics
                                            )
     print(f"alarm {alarm}")
+    alarm_arn = 'arn:aws:cloudwatch:us-west-2:975049910219:alarm:' + alarm_name
+    print(f"alarm_arn: {alarm_arn}")
+
+    res = lambda_client.add_permission(
+      FunctionName=function_name,
+      Action='lambda:InvokeFunction',
+      StatementId='alarm_lambda_' + task_id,
+      Principal='lambda.alarms.cloudwatch.amazonaws.com',
+      SourceArn=alarm_arn
+    )
+    print('------')
+    print(f"add lambda permission: {res}")
+
   elif status == 'DEPROVISIONING':
     cw_wrapper.delete_metric_alarms([alarm_name])
+    ## will throw exception if not exist
+    try:
+      res = lambda_client.remove_permission(
+        FunctionName=function_name,
+        StatementId='alarm_lambda_' + task_id
+      )
+      print(f"remove lambda permission: {res}")
+    except ClientError:
+      logger.exception(
+        "Couldn't add alarm %s to metric ",
+        alarm_name,
+      )
+      print('encounter error')
   else:
     print(f"show throw exception !!! {status}")

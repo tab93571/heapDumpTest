@@ -59,7 +59,7 @@ Resources:
       Name: EcsDemoEventRule
       EventPattern: >-
         {"source":["aws.ecs"],"detail-type":["ECS Task State
-        Change"],"detail":{"containers":{"containerArn":[{"wildcard":"arn:aws:ecs:*ecs-demo-cluster*"}]},"group":["service:ecs-demo-service"],"lastStatus":["PROVISIONING","DEPROVISIONING","STOPPED"]}}
+        Change"],"detail":{"containers":{"containerArn":[{"wildcard":"arn:aws:ecs:*ecs-demo-cluster*"}]},"group":["service:ecs-demo-service"],"lastStatus":["PROVISIONING","DEPROVISIONING"]}}
       State: ENABLED
       Description: Capture ecs task state event
       EventBusName: default
@@ -67,20 +67,20 @@ Resources:
         - Id: 'EcsDemoEventRuleFromCFN'
           Arn:
             Fn::Sub: >-
-              arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:reboot_ecs_task
-#  EcsAlarmHandler:
-#    Type: AWS::Serverless::Function
-#    Properties:
-#      FunctionName: ecs_alarm_handler
-#      CodeUri: s3://kevin5603/ecs_alarm_handler.py.zip
-#      Handler: ecs_alarm_handler.lambda_handler
-#      Runtime: python3.12
-#      MemorySize: 128
-#      Environment:
-#        Variables:
-#          JAVA_TOOL_OPTIONS: '--add-opens=java.management/sun.management=ALL-UNNAMED'
-#      Role: !GetAtt ExecutionLambdaRole.Arn
-#      Timeout: 120
+              arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ecs_alarm_handler
+  EcsAlarmHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ecs_alarm_handler
+      CodeUri: s3://kevin5603/ecs_alarm_handler.py.zip
+      Handler: ecs_alarm_handler.lambda_handler
+      Runtime: python3.12
+      MemorySize: 128
+      Environment:
+        Variables:
+          JAVA_TOOL_OPTIONS: '--add-opens=java.management/sun.management=ALL-UNNAMED'
+      Role: !GetAtt ExecutionLambdaRole.Arn
+      Timeout: 120
   ExecutionLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -109,3 +109,27 @@ Resources:
                   - 'cloudwatch:PutMetricAlarm'
                   - 'cloudwatch:DeleteAlarms'
                 Resource: 'arn:aws:cloudwatch:*'
+              - Effect: Allow
+                Action:
+                  - 'lambda:RemovePermission'
+                  - 'lambda:AddPermission'
+                Resource: 'arn:aws:lambda:us-west-2:975049910219:function:*'
+  EventBridgeLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EcsAlarmHandler
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+  AlarmProcessorHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: alarm_processor
+      CodeUri: s3://kevin5603/alarm_processor.py.zip
+      Handler: alarm_processor.lambda_handler
+      Runtime: python3.12
+      MemorySize: 128
+      Environment:
+        Variables:
+          JAVA_TOOL_OPTIONS: '--add-opens=java.management/sun.management=ALL-UNNAMED'
+      Role: !GetAtt ExecutionLambdaRole.Arn
+      Timeout: 120

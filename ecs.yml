@@ -201,14 +201,14 @@ Resources:
           PortMappings:
             - ContainerPort: 8080
               Protocol: tcp
-          HealthCheck:
-            Command:
-              - "CMD-SHELL"
-              - "curl -f http://localhost:8080 || exit 1"
-            Interval: 30
-            Retries: 3
-            Timeout: 5
-            StartPeriod: 10
+#          HealthCheck:
+#            Command:
+#              - "CMD-SHELL"
+#              - "curl -f http://localhost:8080 || exit 1"
+#            Interval: 30
+#            Retries: 3
+#            Timeout: 5
+#            StartPeriod: 10
   EcsCluster:
     Type: AWS::ECS::Cluster
     Properties:
@@ -236,7 +236,7 @@ Resources:
       - EcsDemoListener
     Properties:
       ServiceName: ecs-demo-service
-      DesiredCount: 1
+      DesiredCount: 3
       LaunchType: FARGATE
       TaskDefinition: !Ref EcsDemoTaskDefinition
       Cluster: !Ref EcsCluster
@@ -257,8 +257,8 @@ Resources:
       ScalableDimension: ecs:service:DesiredCount
       ServiceNamespace: ecs
       ResourceId: service/ecs-demo-cluster/ecs-demo-service
-      MinCapacity: 1
-      MaxCapacity: 2
+      MinCapacity: 3
+      MaxCapacity: 5
       RoleARN: !GetAtt AutoScalingRoleArn.Arn
   ScaleUpPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy

@@ -7,11 +7,6 @@ client = boto3.client('cloudwatch')
 
 alarm_name = 'ecs_task_cpu_and_memory_usage_to_high'
 
-# 调用 describe_alarms API 获取 Alarm 信息
-response = client.describe_alarms(
-  AlarmNames=[alarm_name]
-)
-
 
 def get_dimension_value(response, dimension_name):
   print('TODO - Call the AWS SDK to retrieve the task ID.')
@@ -24,8 +19,13 @@ def stop_task(task_id):
 def lambda_handler(event, context):
   print('--- START ---')
   print(event)
+  print(event['alarmArn'])
+  task_id = event['alarmArn'].split(':')[-1].split('-')[-2]
 
-  task_id = get_dimension_value(response, 'TaskId')
+  print(f"task id: {task_id}")
+  z = event['alarmData']['configuration']['metrics']
+  print(z)
+  # task_id = get_dimension_value(response, 'TaskId')
 
   if task_id:
     print(f'TaskId: {task_id}')
