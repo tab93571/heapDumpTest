@@ -339,5 +339,55 @@ Resources:
       ComparisonOperator: LessThanOrEqualToThreshold
       AlarmActions:
         - !Ref ScaleDownPolicy
+        - !Sub
+          - arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LowCpuAction}
+          - LowCpuAction: !Ref LowCpuAction
 
+  LowCpuAction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: LowCpuAction
+      Runtime: python3.9
+      Role: !GetAtt LambdaRole.Arn
+      Handler: index.lambda_handler
+      Code:
+        ZipFile: |
+          def lambda_handler(event,context):
+            print("Hello world from lambda cloudformation")
+            return "Hello cloudformation!"
+      Description: Hello world from lambda cloudformation
+      Tags:
+        - Key: "Name"
+          Value: "High Memory Lambda - Hello world"
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: AWSLambdaExecute
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - 'arn:aws:logs:*:*:*'
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LowCpuAction
+      Action: lambda:InvokeFunction
+      Principal: lambda.alarms.cloudwatch.amazonaws.com
 
