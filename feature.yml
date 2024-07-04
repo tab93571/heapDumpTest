@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Parameters:
-
+Transform: AWS::Serverless-2016-10-31
 Resources:
   EcsTaskCpuUtilizedMetric:
     Type: AWS::Logs::MetricFilter
@@ -54,4 +53,59 @@ Resources:
           Dimensions:
             - Key: TaskId
               Value: '$.TaskId'
-
+  EcsDemoEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: EcsDemoEventRule
+      EventPattern: >-
+        {"source":["aws.ecs"],"detail-type":["ECS Task State
+        Change"],"detail":{"containers":{"containerArn":[{"wildcard":"arn:aws:ecs:*ecs-demo-cluster*"}]},"group":["service:ecs-demo-service"],"lastStatus":["PROVISIONING","DEPROVISIONING","STOPPED"]}}
+      State: ENABLED
+      Description: Capture ecs task state event
+      EventBusName: default
+      Targets:
+        - Id: 'EcsDemoEventRuleFromCFN'
+          Arn:
+            Fn::Sub: >-
+              arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:reboot_ecs_task
+#  EcsAlarmHandler:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      FunctionName: ecs_alarm_handler
+#      CodeUri: s3://kevin5603/ecs_alarm_handler.py.zip
+#      Handler: ecs_alarm_handler.lambda_handler
+#      Runtime: python3.12
+#      MemorySize: 128
+#      Environment:
+#        Variables:
+#          JAVA_TOOL_OPTIONS: '--add-opens=java.management/sun.management=ALL-UNNAMED'
+#      Role: !GetAtt ExecutionLambdaRole.Arn
+#      Timeout: 120
+  ExecutionLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: [ 'sts:AssumeRole' ]
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: AWSLambdaCloudWatch
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: Allow
+                Action:
+                  - 'cloudwatch:PutMetricAlarm'
+                  - 'cloudwatch:DeleteAlarms'
+                Resource: 'arn:aws:cloudwatch:*'

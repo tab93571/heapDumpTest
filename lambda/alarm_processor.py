@@ -14,17 +14,6 @@ response = client.describe_alarms(
 
 
 def get_dimension_value(response, dimension_name):
-  # for alarm in response['MetricAlarms']:
-  #   if 'Metrics' in alarm:
-  #     for metric in alarm['Metrics']:
-  #       if 'MetricStat' in metric:
-  #         for dimension in metric['MetricStat']['Metric']['Dimensions']:
-  #           if dimension['Name'] == dimension_name:
-  #             return dimension['Value']
-  #   elif 'MetricStat' in alarm:
-  #     for dimension in alarm['MetricStat']['Metric']['Dimensions']:
-  #       if dimension['Name'] == dimension_name:
-  #         return dimension['Value']
   print('TODO - Call the AWS SDK to retrieve the task ID.')
   return None
 
