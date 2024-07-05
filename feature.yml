@@ -1,14 +1,18 @@
 AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  clusterName:
+    Type: String
+    Default: ecs-demo-cluster
 Transform: AWS::Serverless-2016-10-31
 Resources:
   EcsTaskCpuUtilizedMetric:
     Type: AWS::Logs::MetricFilter
     Properties:
       FilterName: ecs_task_cpu_utilized
-      FilterPattern: '{ $.Type="Task"&&$.TaskId=%[a-zA-Z0-9]% &&$.CpuUtilized=%\d% }'
-      LogGroupName: /aws/ecs/containerinsights/ecs-demo-cluster/performance
+      FilterPattern: '{ $.Type="Task"&& $.CpuUtilized=%\d% }'
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
       MetricTransformations:
-        - MetricNamespace: ecs-demo-cluster
+        - MetricNamespace: !Ref clusterName
           MetricName: cpu-utilized-metric
           MetricValue: '$.CpuUtilized'
           Dimensions:
@@ -18,10 +22,10 @@ Resources:
     Type: AWS::Logs::MetricFilter
     Properties:
       FilterName: ecs_task_cpu_reserved
-      FilterPattern: '{ $.Type="Task"&&$.TaskId=%[a-zA-Z0-9]% &&$.CpuReserved=%\d% }'
-      LogGroupName: /aws/ecs/containerinsights/ecs-demo-cluster/performance
+      FilterPattern: '{ $.Type="Task"&& $.CpuReserved=%\d% }'
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
       MetricTransformations:
-        - MetricNamespace: ecs-demo-cluster
+        - MetricNamespace: !Ref clusterName
           MetricName: cpu-reserved-metric
           MetricValue: '$.CpuReserved'
           Dimensions:
@@ -32,9 +36,9 @@ Resources:
     Properties:
       FilterName: ecs_task_memory_utilized
       FilterPattern: '{ $.Type="Task"&&$.TaskId=%[a-zA-Z0-9]% &&$.MemoryUtilized=%\d% }'
-      LogGroupName: /aws/ecs/containerinsights/ecs-demo-cluster/performance
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
       MetricTransformations:
-        - MetricNamespace: ecs-demo-cluster
+        - MetricNamespace: !Ref clusterName
           MetricName: memory-utilized-metric
           MetricValue: '$.MemoryUtilized'
           Dimensions:
@@ -45,9 +49,9 @@ Resources:
     Properties:
       FilterName: ecs_task_memory_reserved
       FilterPattern: '{ $.Type="Task"&&$.TaskId=%[a-zA-Z0-9]% &&$.MemoryReserved=%\d% }'
-      LogGroupName: /aws/ecs/containerinsights/ecs-demo-cluster/performance
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
       MetricTransformations:
-        - MetricNamespace: ecs-demo-cluster
+        - MetricNamespace: !Ref clusterName
           MetricName: memory-reserved-metric
           MetricValue: '$.MemoryReserved'
           Dimensions:
@@ -104,6 +108,10 @@ Resources:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: AWSLambdaPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
               - Effect: Allow
                 Action:
                   - 'cloudwatch:PutMetricAlarm'
@@ -113,14 +121,14 @@ Resources:
                 Action:
                   - 'lambda:RemovePermission'
                   - 'lambda:AddPermission'
-                Resource: 'arn:aws:lambda:us-west-2:975049910219:function:*'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
   EventBridgeLambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref EcsAlarmHandler
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
-  AlarmProcessorHandler:
+  CloseUnhealthyTaskHandler:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: close_unhealthy_task
@@ -131,5 +139,50 @@ Resources:
       Environment:
         Variables:
           JAVA_TOOL_OPTIONS: '--add-opens=java.management/sun.management=ALL-UNNAMED'
-      Role: !GetAtt ExecutionLambdaRole.Arn
+      Role: !GetAtt CloseUnhealthyTaskExecutionLambdaRole.Arn
       Timeout: 120
+  CloseUnhealthyTaskExecutionLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: [ 'sts:AssumeRole' ]
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: AWSLambdaCloudWatch
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: StopTask
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecs:StopTask'
+                Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task/${clusterName}/*'
+        - PolicyName: ListTasks
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecs:ListTasks'
+                Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/${clusterName}/*'
+  CloseUnhealthyTaskLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CloseUnhealthyTaskHandler
+      Action: lambda:InvokeFunction
+      Principal: ecs-tasks.amazonaws.com

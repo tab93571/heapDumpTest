@@ -75,7 +75,7 @@ def lambda_handler(event, context):
   print(f"service name: {service_name}")
   alarm_name = cluster_name + "-" + service_name + "-" + task_id + "-" + "alarm"
   print(f"alarm name: {alarm_name}")
-  function_name = 'alarm_processor'
+  function_name = 'close_unhealthy_task'
 
   cw_wrapper = CLoudWatchWrapper(cloudwatch)
 
@@ -90,7 +90,7 @@ def lambda_handler(event, context):
       'Id': 'reboot_alarm',
       'Label': 'reboot_alarm',
       'ReturnData': True,
-      'Expression': '(cpu_usage > 20) && (memory_usage > 20)'
+      'Expression': '(cpu_usage > 50) && (memory_usage > 20)'
     }, {
       'Id': 'cpu_usage',
       'Label': 'cpu_usage',
