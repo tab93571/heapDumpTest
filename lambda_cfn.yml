@@ -1,77 +1,13 @@
 AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
 Parameters:
   clusterName:
     Type: String
     Default: ecs-demo-cluster
-Transform: AWS::Serverless-2016-10-31
+  serviceName:
+    Type: String
+    Default: ecs-demo-service
 Resources:
-  EcsTaskCpuUtilizedMetric:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      FilterName: ecs_task_cpu_utilized
-      FilterPattern: '{ $.Type="Task"&& $.CpuUtilized=%\d% }'
-      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
-      MetricTransformations:
-        - MetricNamespace: !Ref clusterName
-          MetricName: cpu-utilized-metric
-          MetricValue: '$.CpuUtilized'
-          Dimensions:
-            - Key: TaskId
-              Value: '$.TaskId'
-  EcsTaskCpuReservedMetric:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      FilterName: ecs_task_cpu_reserved
-      FilterPattern: '{ $.Type="Task"&& $.CpuReserved=%\d% }'
-      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
-      MetricTransformations:
-        - MetricNamespace: !Ref clusterName
-          MetricName: cpu-reserved-metric
-          MetricValue: '$.CpuReserved'
-          Dimensions:
-            - Key: TaskId
-              Value: '$.TaskId'
-  EcsTaskMemoryUtilizedMetric:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      FilterName: ecs_task_memory_utilized
-      FilterPattern: '{ $.Type="Task"&&$.TaskId=%[a-zA-Z0-9]% &&$.MemoryUtilized=%\d% }'
-      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
-      MetricTransformations:
-        - MetricNamespace: !Ref clusterName
-          MetricName: memory-utilized-metric
-          MetricValue: '$.MemoryUtilized'
-          Dimensions:
-            - Key: TaskId
-              Value: '$.TaskId'
-  EcsTaskMemoryReservedMetric:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      FilterName: ecs_task_memory_reserved
-      FilterPattern: '{ $.Type="Task"&&$.TaskId=%[a-zA-Z0-9]% &&$.MemoryReserved=%\d% }'
-      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
-      MetricTransformations:
-        - MetricNamespace: !Ref clusterName
-          MetricName: memory-reserved-metric
-          MetricValue: '$.MemoryReserved'
-          Dimensions:
-            - Key: TaskId
-              Value: '$.TaskId'
-  EcsDemoEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: EcsDemoEventRule
-      EventPattern: >-
-        {"source":["aws.ecs"],"detail-type":["ECS Task State
-        Change"],"detail":{"containers":{"containerArn":[{"wildcard":"arn:aws:ecs:*ecs-demo-cluster*"}]},"group":["service:ecs-demo-service"],"lastStatus":["PROVISIONING","DEPROVISIONING"]}}
-      State: ENABLED
-      Description: Capture ecs task state event
-      EventBusName: default
-      Targets:
-        - Id: 'EcsDemoEventRuleFromCFN'
-          Arn:
-            Fn::Sub: >-
-              arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ecs_alarm_handler
   EcsAlarmHandler:
     Type: AWS::Serverless::Function
     Properties:
@@ -85,6 +21,16 @@ Resources:
           JAVA_TOOL_OPTIONS: '--add-opens=java.management/sun.management=ALL-UNNAMED'
       Role: !GetAtt ExecutionLambdaRole.Arn
       Timeout: 120
+      Events:
+        MySamEvent:
+          Type: EventBridgeRule
+          Properties:
+            Pattern: !Sub >-
+              {"source":["aws.ecs"],"detail-type":["ECS Task State
+              Change"],"detail":{"containers":{"containerArn":[{"wildcard":"arn:aws:ecs:*${clusterName}*"}]},"group":["service:${serviceName}"],"lastStatus":["PROVISIONING","DEPROVISIONING"]}}
+            RuleName: EcsTaskStateChange
+            Target:
+              Id: EcsTaskStateChange
   ExecutionLambdaRole:
     Type: AWS::IAM::Role
     Properties:

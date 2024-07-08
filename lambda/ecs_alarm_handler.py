@@ -1,91 +1,102 @@
-import boto3
 import logging
+
+import boto3
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
-cloudwatch = boto3.resource("cloudwatch")
-client = boto3.client('cloudwatch')
+cloudwatch_client = boto3.client('cloudwatch')
 lambda_client = boto3.client('lambda')
 
-class CLoudWatchWrapper:
-  def __init__(self, cloudwatch_resource):
-    self.cloudwatch_resource = cloudwatch_resource
 
-  def create_metric_alarm(self,
+def create_metric_alarm(alarm_name,
+    alarm_description, alarm_actions,
+    eval_periods, threshold,
+    comparison_op, metrics):
+  try:
+    alarm = cloudwatch_client.put_metric_alarm(
+      AlarmName=alarm_name,
+      AlarmDescription=alarm_description,
+      AlarmActions=alarm_actions,
+      Threshold=threshold,
+      DatapointsToAlarm=1,
+      EvaluationPeriods=eval_periods,
+      ComparisonOperator=comparison_op,
+      Metrics=metrics
+    )
+    print(
+      "Added alarm %s to track metric ",
       alarm_name,
-      alarm_description,
-      alarm_actions,
-      eval_periods,
-      threshold,
-      comparison_op,
-      metrics
-  ):
-    try:
-      alarm = client.put_metric_alarm(
-        AlarmName=alarm_name,
-        AlarmDescription=alarm_description,
-        AlarmActions=alarm_actions,
-        Threshold=threshold,
-        DatapointsToAlarm=1,
-        EvaluationPeriods=eval_periods,
-        ComparisonOperator=comparison_op,
-        Metrics=metrics
-      )
-      print(
-        "Added alarm %s to track metric ",
-        alarm_name,
-      )
-    except ClientError:
-      logger.exception(
-        "Couldn't add alarm %s to metric ",
-        alarm_name,
-      )
-      raise
-    else:
-      return alarm
+    )
+  except ClientError:
+    logger.exception(
+      "Couldn't add alarm %s to metric ",
+      alarm_name,
+    )
+    raise
+  else:
+    return alarm
 
-  def delete_metric_alarms(self, alarm_names):
-    try:
-      client.delete_alarms(
-        AlarmNames=alarm_names
-      )
-      print(
-        "Deleted alarms %s.", alarm_names
-      )
-    except ClientError:
-      logger.exception(
-        "Couldn't delete alarms for metric %s.%s.",
-      )
-      raise
 
+def delete_metric_alarms(alarm_names):
+  try:
+    cloudwatch_client.delete_alarms(
+      AlarmNames=alarm_names
+    )
+    print(
+      "Deleted alarms %s.", alarm_names
+    )
+  except ClientError:
+    logger.exception(
+      "Couldn't delete alarms for metric %s.%s.",
+    )
+    raise
+
+def get_task_id(event):
+  task_id = event['resources'][0].split('/')[-1]
+  print(f"task id: {task_id}")
+  return task_id
+
+def get_task_status(event):
+  status = event['detail']['lastStatus']
+  print(f"current status: {status}")
+  return status
+
+def get_ecs_cluster_name(event):
+  cluster_name = event['resources'][0].split('/')[-2]
+  print(f"cluster name: {cluster_name}")
+  return cluster_name
+
+def get_ecs_service_name(event):
+  service_name = event['detail']['group'].split(':')[-1]
+  print(f"service name: {service_name}")
+  return service_name
 
 def lambda_handler(event, context):
   logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-  print("-" * 88)
-  print("Welcome to the Amazon CloudWatch metrics and alarms demo!")
-  print("-" * 88)
+  task_id = get_task_id(event)
+  status = get_task_status(event)
+  cluster_name = get_ecs_cluster_name(event)
+  service_name = get_ecs_service_name(event)
 
-  task_id = event['resources'][0].split('/')[-1]
-  print(f"task id: {task_id}")
-  status = event['detail']['lastStatus']
-  print(f"current status: {status}")
-  cluster_name = event['resources'][0].split('/')[-2]
-  print(f"cluster name: {cluster_name}")
-  service_name = event['detail']['group'].split(':')[-1]
-  print(f"service name: {service_name}")
   alarm_name = cluster_name + "-" + service_name + "-" + task_id + "-" + "alarm"
   print(f"alarm name: {alarm_name}")
+  ## 變數
   function_name = 'close_unhealthy_task'
-
-  cw_wrapper = CLoudWatchWrapper(cloudwatch)
 
   if status == 'PROVISIONING':
     print('crate task alarm...')
-    alarm_actions = ['arn:aws:lambda:us-west-2:975049910219:function:' + function_name]
-    alarm_description = 'use python create alarm'
+    ## 變數
+    alarm_actions = [
+      'arn:aws:lambda:us-west-2:975049910219:function:' + function_name]
+    ## rename
+    alarm_description = 'use python create alarm' \
+      ## 變數
     eval_periods = 1
+    ## 變數
     threshold = 1
+    ## 變數
     comparison_operator = "GreaterThanOrEqualToThreshold"
+    ## 變數
     metrics = [{
       'Id': 'reboot_alarm',
       'Label': 'reboot_alarm',
@@ -108,7 +119,7 @@ def lambda_handler(event, context):
       'MetricStat': {
         'Metric': {
           'Namespace': 'ecs-demo-cluster',
-          'MetricName': 'cpu-utilized-metric',
+          'MetricName': 'CpuUtilized',
           'Dimensions': [{
             'Name': 'TaskId',
             'Value': task_id
@@ -125,7 +136,7 @@ def lambda_handler(event, context):
       'MetricStat': {
         'Metric': {
           'Namespace': 'ecs-demo-cluster',
-          'MetricName': 'cpu-reserved-metric',
+          'MetricName': 'CpuReserved',
           'Dimensions': [{
             'Name': 'TaskId',
             'Value': task_id
@@ -141,7 +152,7 @@ def lambda_handler(event, context):
       'MetricStat': {
         'Metric': {
           'Namespace': 'ecs-demo-cluster',
-          'MetricName': 'memory-utilized-metric',
+          'MetricName': 'MemoryUtilized',
           'Dimensions': [{
             'Name': 'TaskId',
             'Value': task_id
@@ -157,7 +168,7 @@ def lambda_handler(event, context):
       'MetricStat': {
         'Metric': {
           'Namespace': 'ecs-demo-cluster',
-          'MetricName': 'memory-reserved-metric',
+          'MetricName': 'MemoryReserved',
           'Dimensions': [{
             'Name': 'TaskId',
             'Value': task_id
@@ -166,18 +177,19 @@ def lambda_handler(event, context):
         'Stat': 'Average',
         'Period': 60
       },
-    }, ]
+    }]
 
     print(f"Creating alarm {alarm_name}")
-    alarm = cw_wrapper.create_metric_alarm(alarm_name,
-                                           alarm_description,
-                                           alarm_actions,
-                                           eval_periods,
-                                           threshold,
-                                           comparison_operator,
-                                           metrics
-                                           )
+    alarm = create_metric_alarm(alarm_name,
+                                alarm_description,
+                                alarm_actions,
+                                eval_periods,
+                                threshold,
+                                comparison_operator,
+                                metrics
+                                )
     print(f"alarm {alarm}")
+    ## 變數
     alarm_arn = 'arn:aws:cloudwatch:us-west-2:975049910219:alarm:' + alarm_name
     print(f"alarm_arn: {alarm_arn}")
 
@@ -192,8 +204,7 @@ def lambda_handler(event, context):
     print(f"add lambda permission: {res}")
 
   elif status == 'DEPROVISIONING':
-    cw_wrapper.delete_metric_alarms([alarm_name])
-    ## will throw exception if not exist
+    delete_metric_alarms([alarm_name])
     try:
       res = lambda_client.remove_permission(
         FunctionName=function_name,
@@ -206,5 +217,3 @@ def lambda_handler(event, context):
         alarm_name,
       )
       print('encounter error')
-  else:
-    print(f"show throw exception !!! {status}")

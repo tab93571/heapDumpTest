@@ -69,11 +69,28 @@ docker push ${docker_username}/simple-app
 ![img.png](picture/img12.png)
 
 
-## ECS 可能會用到指令
+## 可能會用到指令
 停止指定task
 ``` sh
 aws ecs stop-task --cluster ${cluster_name} --task ${task_ARN}
 ```
+
+~~ECS cluster container insight enabled~~ 請改用cloudformation設定 
+``` sh
+aws ecs update-cluster-settings --cluster ecs-demo-cluster --settings name=containerInsights,value=enabled
+```
+
+Upload file to s3
+``` sh
+aws s3 cp /Users/kevin.lee/Documents/work/project/demo-gc-metric/lambda/ecs_alarm_handler.py.zip \
+s3://kevin5603/ecs_alarm_handler.py.zip
+```
+
+Deploy lambda
+``` sh
+aws lambda update-function-code --function-name ecs_alarm_handler --s3-bucket kevin5603 --s3-key ecs_alarm_handler.py.zip
+```
+
 # Create Lambda
 ## Manually in AWS console
 前提：需要將前面的 ECS 建置完畢

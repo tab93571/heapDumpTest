@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  clusterName:
+    Type: String
+    Default: ecs-demo-cluster
+Resources:
+  EcsTaskCpuUtilizedMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterName: EcsTaskCpuUtilizedMetric
+      FilterPattern: '{ $.Type="Task" && $.CpuUtilized=%\d% }'
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
+      MetricTransformations:
+        - MetricNamespace: !Ref clusterName
+          MetricName: CpuUtilized
+          MetricValue: '$.CpuUtilized'
+          Dimensions:
+            - Key: TaskId
+              Value: '$.TaskId'
+  EcsTaskCpuReservedMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterName: EcsTaskCpuReservedMetric
+      FilterPattern: '{ $.Type="Task" && $.CpuReserved=%\d% }'
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
+      MetricTransformations:
+        - MetricNamespace: !Ref clusterName
+          MetricName: CpuReserved
+          MetricValue: '$.CpuReserved'
+          Dimensions:
+            - Key: TaskId
+              Value: '$.TaskId'
+  EcsTaskMemoryUtilizedMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterName: EcsTaskMemoryUtilizedMetric
+      FilterPattern: '{ $.Type="Task" && $.MemoryUtilized=%\d% }'
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
+      MetricTransformations:
+        - MetricNamespace: !Ref clusterName
+          MetricName: MemoryUtilized
+          MetricValue: '$.MemoryUtilized'
+          Dimensions:
+            - Key: TaskId
+              Value: '$.TaskId'
+  EcsTaskMemoryReservedMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterName: EcsTaskMemoryReservedMetric
+      FilterPattern: '{ $.Type="Task" && $.MemoryReserved=%\d% }'
+      LogGroupName: !Sub /aws/ecs/containerinsights/${clusterName}/performance
+      MetricTransformations:
+        - MetricNamespace: !Ref clusterName
+          MetricName: MemoryReserved
+          MetricValue: '$.MemoryReserved'
+          Dimensions:
+            - Key: TaskId
+              Value: '$.TaskId'
