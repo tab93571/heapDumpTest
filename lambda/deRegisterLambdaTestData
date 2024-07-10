@@ -1,0 +1,48 @@
+{
+  "alarmArn": "arn:aws:cloudwatch:us-west-2:123456789012:alarm:ecs-demo-cluster-ecs-demo-service-81cb951c80a94dca8f7b10bccf7291bd-alarm",
+  "detail": {
+    "state": {
+      "value": "ALARM"
+    }
+  },
+  "alarmData": {
+    "configuration": {
+      "metrics": [
+        {
+          "id": "cpu_utilized",
+          "metricStat": {
+            "metric": {
+              "namespace": "ecs-demo-cluster",
+              "metricName": "CpuUtilized",
+              "dimensions": [
+                {
+                  "name": "TaskId",
+                  "value": "abcdef1234567890"
+                }
+              ]
+            },
+            "period": 60,
+            "stat": "Average"
+          }
+        },
+        {
+          "id": "memory_utilized",
+          "metricStat": {
+            "metric": {
+              "namespace": "ecs-demo-cluster",
+              "metricName": "MemoryUtilized",
+              "dimensions": [
+                {
+                  "name": "TaskId",
+                  "value": "abcdef1234567890"
+                }
+              ]
+            },
+            "period": 60,
+            "stat": "Average"
+          }
+        }
+      ]
+    }
+  }
+}

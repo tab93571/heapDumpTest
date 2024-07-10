@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,6 +18,19 @@ public class ApiController {
   public String hello() {
     System.out.println("hello world: " + randomId);
     return "hello world: " + randomId;
+  }
+
+  @GetMapping("token")
+  public String accessToken() {
+    System.out.println("token: " + randomId);
+    return "accessToken from Core";
+  }
+
+  @GetMapping("heapDump")
+  public String generateHeapDump(@RequestHeader(value = "accessToken") String accessToken) {
+    System.out.println("HeapDump");
+    System.out.println(accessToken);
+    return "HeapDump " + accessToken;
   }
 
   @GetMapping("memory")

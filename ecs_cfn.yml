@@ -4,7 +4,7 @@ Parameters:
   imageRepository:
     Type: String
     # specify your docker registry or replace when creating stack
-    Default: 'docker.io/kevin5603/simple-app'
+    Default: 'docker.io/tab9357/simple-app'
   ecsDemoVpcId:
     Type: AWS::EC2::VPC::Id
   subnetIdList:
@@ -31,105 +31,6 @@ Resources:
               - Effect: Allow
                 Action:
                   - "logs:*"
-                Resource: "*"
-  AutoScalingRoleArn:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: ecs-demo-auto-scaling-role
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action:
-              - sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - autoscaling.amazonaws.com
-      Policies:
-        - PolicyName: CloudWatchLogsFullAccess
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: "EC2InstanceManagement"
-                Effect: "Allow"
-                Action:
-                  - "ec2:AttachClassicLinkVpc"
-                  - "ec2:CancelSpotInstanceRequests"
-                  - "ec2:CreateFleet"
-                  - "ec2:CreateTags"
-                  - "ec2:DeleteTags"
-                  - "ec2:Describe*"
-                  - "ec2:DetachClassicLinkVpc"
-                  - "ec2:GetInstanceTypesFromInstanceRequirements"
-                  - "ec2:GetSecurityGroupsForVpc"
-                  - "ec2:ModifyInstanceAttribute"
-                  - "ec2:RequestSpotInstances"
-                  - "ec2:RunInstances"
-                  - "ec2:StartInstances"
-                  - "ec2:StopInstances"
-                  - "ec2:TerminateInstances"
-                Resource: "*"
-              - Sid: "EC2InstanceProfileManagement"
-                Effect: "Allow"
-                Action:
-                  - "iam:PassRole"
-                Resource: "*"
-                Condition:
-                  StringLike:
-                    iam:PassedToService: "ec2.amazonaws.com*"
-              - Sid: "EC2SpotManagement"
-                Effect: "Allow"
-                Action:
-                  - "iam:CreateServiceLinkedRole"
-                Resource: "*"
-                Condition:
-                  StringEquals:
-                    iam:AWSServiceName: "spot.amazonaws.com"
-              - Sid: "ELBManagement"
-                Effect: "Allow"
-                Action:
-                  - "elasticloadbalancing:Register*"
-                  - "elasticloadbalancing:Deregister*"
-                  - "elasticloadbalancing:Describe*"
-                Resource: "*"
-              - Sid: "CWManagement"
-                Effect: "Allow"
-                Action:
-                  - "cloudwatch:DeleteAlarms"
-                  - "cloudwatch:DescribeAlarms"
-                  - "cloudwatch:GetMetricData"
-                  - "cloudwatch:PutMetricAlarm"
-                Resource: "*"
-              - Sid: "SNSManagement"
-                Effect: "Allow"
-                Action:
-                  - "sns:Publish"
-                Resource: "*"
-              - Sid: "EventBridgeRuleManagement"
-                Effect: "Allow"
-                Action:
-                  - "events:PutRule"
-                  - "events:PutTargets"
-                  - "events:RemoveTargets"
-                  - "events:DeleteRule"
-                  - "events:DescribeRule"
-                Resource: "*"
-                Condition:
-                  StringEquals:
-                    events:ManagedBy: "autoscaling.amazonaws.com"
-              - Sid: "SystemsManagerParameterManagement"
-                Effect: "Allow"
-                Action:
-                  - "ssm:GetParameters"
-                Resource: "*"
-              - Sid: "VpcLatticeManagement"
-                Effect: "Allow"
-                Action:
-                  - "vpc-lattice:DeregisterTargets"
-                  - "vpc-lattice:GetTargetGroup"
-                  - "vpc-lattice:ListTargets"
-                  - "vpc-lattice:ListTargetGroups"
-                  - "vpc-lattice:RegisterTargets"
                 Resource: "*"
   EcsDemoLoadbalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -201,14 +102,14 @@ Resources:
           PortMappings:
             - ContainerPort: 8080
               Protocol: tcp
-#          HealthCheck:
-#            Command:
-#              - "CMD-SHELL"
-#              - "curl -f http://localhost:8080 || exit 1"
-#            Interval: 30
-#            Retries: 3
-#            Timeout: 5
-#            StartPeriod: 10
+  #          HealthCheck:
+  #            Command:
+  #              - "CMD-SHELL"
+  #              - "curl -f http://localhost:8080 || exit 1"
+  #            Interval: 30
+  #            Retries: 3
+  #            Timeout: 5
+  #            StartPeriod: 10
   EcsCluster:
     Type: AWS::ECS::Cluster
     Properties:
@@ -253,92 +154,3 @@ Resources:
           SecurityGroups:
             - !GetAtt EcsSecurityGroup.GroupId
           Subnets: !Ref subnetIdList
-  EcsDemoScaleTarget:
-    Type: AWS::ApplicationAutoScaling::ScalableTarget
-    DependsOn: EcsDemoService
-    Properties:
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
-      ResourceId: service/ecs-demo-cluster/ecs-demo-service
-      MinCapacity: 2
-      MaxCapacity: 3
-      RoleARN: !GetAtt AutoScalingRoleArn.Arn
-  ScaleUpPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
-    DependsOn: EcsDemoScaleTarget
-    Properties:
-      PolicyName: ecs-cluster-scale-up
-      PolicyType: StepScaling
-      ResourceId: service/ecs-demo-cluster/ecs-demo-service
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
-      StepScalingPolicyConfiguration:
-        AdjustmentType: ChangeInCapacity
-        StepAdjustments:
-          - MetricIntervalLowerBound: 0
-            MetricIntervalUpperBound: 40
-            ScalingAdjustment: 1
-#          - MetricIntervalLowerBound: 20
-#            MetricIntervalUpperBound: 40
-#            ScalingAdjustment: 2
-#          - MetricIntervalLowerBound: 40
-#            MetricIntervalUpperBound: 60
-#            ScalingAdjustment: 3
-          - MetricIntervalLowerBound: 40
-            ScalingAdjustment: 2
-        MetricAggregationType: Average
-        Cooldown: 60
-  ScaleDownPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
-    DependsOn: EcsDemoScaleTarget
-    Properties:
-      PolicyName: ecs-cluster-scale-down
-      PolicyType: StepScaling
-      ResourceId: service/ecs-demo-cluster/ecs-demo-service
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
-      StepScalingPolicyConfiguration:
-        AdjustmentType: ChangeInCapacity
-        StepAdjustments:
-          - MetricIntervalUpperBound: 0
-            ScalingAdjustment: -1
-        MetricAggregationType: Average
-        Cooldown: 60
-  HighCpuAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: ecs-demo-cluster-high-cpu
-      MetricName: CPUUtilization
-      Namespace: AWS/ECS
-      Dimensions:
-        - Name: ClusterName
-          Value: ecs-demo-cluster
-        - Name: ServiceName
-          Value: ecs-demo-service
-      Statistic: Average
-      Period: 60
-      DatapointsToAlarm: 1
-      EvaluationPeriods: 2
-      Threshold: 30
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmActions:
-        - !Ref ScaleUpPolicy
-  LowCpuAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: ecs-demo-cluster-low-cpu
-      MetricName: CPUUtilization
-      Namespace: AWS/ECS
-      Dimensions:
-        - Name: ClusterName
-          Value: ecs-demo-cluster
-        - Name: ServiceName
-          Value: ecs-demo-service
-      Statistic: Average
-      Period: 60
-      DatapointsToAlarm: 1
-      EvaluationPeriods: 2
-      Threshold: 20
-      ComparisonOperator: LessThanOrEqualToThreshold
-      AlarmActions:
-        - !Ref ScaleDownPolicy
