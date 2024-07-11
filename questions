@@ -1,4 +1,50 @@
-1. It appears that we need to bring private ip from deRegister lambda to getAccessToken lambda to
-get_heap_dump lambda, can you just store somewhere temporarily and get_heap_dump lambda can access that place.
+1. account expired ?
+2. upload python.zip to somewhere , permission(is one lambda one role), secret manager
+iqc operation
+  CloseUnhealthyTaskHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: close_unhealthy_task
+      CodeUri: s3://kevin5603/close_unhealthy_task.py.zip
+      Handler: close_unhealthy_task.lambda_handler
+      Runtime: python3.12
+      MemorySize: 128
+      Environment:
+        Variables:
+          JAVA_TOOL_OPTIONS: '--add-opens=java.management/sun.management=ALL-UNNAMED'
+      Role: !GetAtt CloseUnhealthyTaskExecutionLambdaRole.Arn
+      Timeout: 120
 
-2. Should we also store the variables close_unhealthy_task lambda somewhere temporarily
+3. lambda response to s3  big file issue
+4. where is lambda code ?
+
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:InvokeFunction",
+                "s3:PutObject",
+                "ecs:DescribeServices",
+                "ecs:DescribeTasks",
+                "elasticloadbalancing:DeregisterTargets",
+                "elasticloadbalancing:DescribeTargetHealth",
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": [
+                "arn:aws:lambda:us-east-1:276445149065:function:deregister",
+                "arn:aws:lambda:us-east-1:276445149065:function:get_heap_dump",
+                "arn:aws:lambda:us-east-1:276445149065:function:get_access_token",
+                "arn:aws:lambda:us-east-1:276445149065:function:close_unhealthy_task",
+                "arn:aws:ecs:us-east-1:276445149065:cluster/iqc-dev-ecs-cluster",
+                "arn:aws:ecs:us-east-1:276445149065:service/iqc-dev-ecs-cluster/*",
+                "arn:aws:ecs:us-east-1:276445149065:task/iqc-dev-ecs-cluster/*",
+                "arn:aws:secretsmanager:us-east-1:276445149065:secret:*",
+                "arn:aws:s3:::lambda-jia/*",
+                "arn:aws:elasticloadbalancing:us-east-1:276445149065:targetgroup/*"
+            ]
+        }
+    ]
+}

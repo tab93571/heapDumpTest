@@ -22,6 +22,11 @@ def lambda_handler(event, context):
     print(f"Cluster Name: {cluster_name}")
 
     if task_id and service_name and cluster_name:
+
+        # if(){
+        #    closeUnhealthyTask
+        # }
+
         # Get the private IP of the task
         private_ip = get_task_private_ip(cluster_name, task_id)
         if private_ip:
@@ -34,6 +39,16 @@ def lambda_handler(event, context):
                 print(f"Target Group ARN: {target_group_arn}")
                 # Deregister the task from the target group
                 deregister_target(target_group_arn, private_ip)
+
+
+                # timeout
+                # lambda_client = boto3.client('lambda')
+                # lambda_client.invoke(
+                # FunctionName='GetAccessToken',
+                # InvocationType='Event',  # Asynchronous invocation
+                # Payload=json.dumps(payload)
+
+
 
     return {
         'statusCode': 200,
