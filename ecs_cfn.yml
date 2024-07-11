@@ -56,7 +56,7 @@ Resources:
     DependsOn: EcsDemoLoadbalancer
     Properties:
       HealthCheckEnabled: true
-      HealthCheckIntervalSeconds: 30
+      HealthCheckIntervalSeconds: 300
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
       HealthCheckPort: 8080
